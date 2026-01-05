@@ -48,6 +48,7 @@ Main:CreateToggle({
     Flag = "ESP_Toggle",
     Callback = function(value)
         ESPEnabled = value
+        -- Hide all boxes if ESP is off
         if not value then
             for _, box in pairs(Boxes) do
                 box.Visible = false
@@ -138,7 +139,7 @@ RunService.RenderStepped:Connect(function()
                 if onScreen then
                     box.Size = ESPSize
                     box.Position = Vector2.new(screenPos.X - ESPSize.X/2, screenPos.Y - ESPSize.Y/2)
-                    box.Color = ESPColor
+                    box.Color = ESPColor -- update color every frame
                     box.Visible = true
                 else
                     box.Visible = false
@@ -162,5 +163,4 @@ Players.PlayerRemoving:Connect(function(plr)
     end
 end)
 
--- Load Rayfield configuration
 Rayfield:LoadConfiguration()
