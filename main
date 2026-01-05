@@ -24,7 +24,6 @@ local function getClosestPlayer()
         if plr ~= player and plr.Character and plr.Character:FindFirstChild(targetPartName) then
             local part = plr.Character[targetPartName]
             local screenPos, onScreen = camera:WorldToViewportPoint(part.Position)
-
             if onScreen then
                 local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
                 if distance < shortestDistance then
@@ -58,13 +57,14 @@ local Window = Rayfield:CreateWindow({
 
 local Camlock = Window:CreateTab("Camlock")
 
--- Create the Hold Keybind
+-- Rayfield Hold Keybind
 local CamlockKeybind = Camlock:CreateKeybind({
     Name = "Camlock Keybind",
     CurrentKeybind = "Q",
     HoldToInteract = true,
     Flag = "Camlock_Keybind",
     Callback = function(Key)
+        -- Fire immediately when pressed
         camlockEnabled = true
         target = getClosestPlayer()
     end
@@ -73,16 +73,16 @@ local CamlockKeybind = Camlock:CreateKeybind({
 -- InputEnded listener for RELEASE (turn camlock off)
 UserInputService.InputEnded:Connect(function(input, gpe)
     if gpe then return end
-
     local keybindFlag = Rayfield.Flags["Camlock_Keybind"]
-    if keybindFlag then
-        local savedKey = keybindFlag.CurrentKeybind
+    if not keybindFlag then return end
 
-        -- Convert string (like "Q") to Enum.KeyCode
-        if input.KeyCode == Enum.KeyCode[savedKey] then
-            camlockEnabled = false
-            target = nil
-        end
+    -- Convert saved string key to Enum
+    local savedKey = keybindFlag.CurrentKeybind
+    local enumKey = Enum.KeyCode[savedKey]
+
+    if input.KeyCode == enumKey then
+        camlockEnabled = false
+        target = nil
     end
 end)
 
@@ -94,6 +94,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Load saved config at the end
+-- Load saved config
 Rayfield:LoadConfiguration()
+
 
