@@ -1,41 +1,14 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
--- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
--- Player & Camera
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
--- Settings
 local camlockEnabled = false
-local target = nil
 local targetPartName = "HumanoidRootPart"
-
--- Find closest player to mouse
-local function getClosestPlayer()
-    local closest = nil
-    local shortestDistance = math.huge
-    local mousePos = UserInputService:GetMouseLocation()
-
-    for _, plr in pairs(Players:GetPlayers()) do
-        if plr ~= player and plr.Character and plr.Character:FindFirstChild(targetPartName) then
-            local part = plr.Character[targetPartName]
-            local screenPos, onScreen = camera:WorldToViewportPoint(part.Position)
-            if onScreen then
-                local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
-                if distance < shortestDistance then
-                    shortestDistance = distance
-                    closest = plr
-                end
-            end
-        end
-    end
-
-    return closest
-end
 
 -- Rayfield Window
 local Window = Rayfield:CreateWindow({
@@ -46,65 +19,68 @@ local Window = Rayfield:CreateWindow({
     ShowText = "Welcome",
     Theme = "Default",
     ToggleUIKeybind = "K",
-    DisableRayfieldPrompts = false,
-    DisableBuildWarnings = false,
-    ConfigurationSaving = {
-        Enabled = true,
-        FolderName = "RAPER_V1",
-        FileName = "Cfg1"
-    },
+    ConfigurationSaving = { Enabled = true, FolderName = "RAPER_V1", FileName = "Cfg1" }
 })
 
 local Camlock = Window:CreateTab("Camlock")
 
--- Create a Rayfield keybind (we just need it to store user key)
+-- Create keybind (we only store the key)
 local CamlockKeybind = Camlock:CreateKeybind({
     Name = "Camlock Keybind",
     CurrentKeybind = "Q",
-    HoldToInteract = false, -- set to false, we'll handle hold manually
+    HoldToInteract = false,
     Flag = "Camlock_Keybind",
-    Callback = function(Key) end -- do nothing, we handle press manually
+    Callback = function(Key) end
 })
 
--- Manual Input handling for HOLD
+-- Press/release handling
 UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe then return end
-    local keybindFlag = Rayfield.Flags["Camlock_Keybind"]
-    if not keybindFlag then return end
-
-    local savedKey = keybindFlag.CurrentKeybind
-    local enumKey = Enum.KeyCode[savedKey]
-
-    if input.KeyCode == enumKey then
+    local flag = Rayfield.Flags["Camlock_Keybind"]
+    if not flag then return end
+    if input.KeyCode == Enum.KeyCode[flag.CurrentKeybind] then
         camlockEnabled = true
-        target = getClosestPlayer()
     end
 end)
 
 UserInputService.InputEnded:Connect(function(input, gpe)
     if gpe then return end
-    local keybindFlag = Rayfield.Flags["Camlock_Keybind"]
-    if not keybindFlag then return end
-
-    local savedKey = keybindFlag.CurrentKeybind
-    local enumKey = Enum.KeyCode[savedKey]
-
-    if input.KeyCode == enumKey then
+    local flag = Rayfield.Flags["Camlock_Keybind"]
+    if not flag then return end
+    if input.KeyCode == Enum.KeyCode[flag.CurrentKeybind] then
         camlockEnabled = false
-        target = nil
     end
 end)
 
--- Camera loop
+-- Camera loop: continuously track closest player while holding
 RunService.RenderStepped:Connect(function()
-    if camlockEnabled and target and target.Character and target.Character:FindFirstChild(targetPartName) then
-        local part = target.Character[targetPartName]
-        camera.CFrame = CFrame.new(camera.CFrame.Position, part.Position)
+    if camlockEnabled then
+        local closest = nil
+        local shortestDistance = math.huge
+        local mousePos = UserInputService:GetMouseLocation()
+        for _, plr in pairs(Players:GetPlayers()) do
+            if plr ~= player and plr.Character and plr.Character:FindFirstChild(targetPartName) then
+                local part = plr.Character[targetPartName]
+                local screenPos, onScreen = camera:WorldToViewportPoint(part.Position)
+                if onScreen then
+                    local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+                    if distance < shortestDistance then
+                        shortestDistance = distance
+                        closest = plr
+                    end
+                end
+            end
+        end
+
+        if closest and closest.Character and closest.Character:FindFirstChild(targetPartName) then
+            local part = closest.Character[targetPartName]
+            camera.CFrame = CFrame.new(camera.CFrame.Position, part.Position)
+        end
     end
 end)
 
--- Load saved config
 Rayfield:LoadConfiguration()
+
 
 
 
