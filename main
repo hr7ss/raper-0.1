@@ -22,10 +22,9 @@ local Window = Rayfield:CreateWindow({
     ConfigurationSaving = { Enabled = true, FolderName = "RAPER_V1", FileName = "Cfg1" }
 })
 
-local Camlock = Window:CreateTab("Camlock")
+local Main = Window:CreateTab("Main")
 
--- Create keybind (we only store the key)
-local CamlockKeybind = Camlock:CreateKeybind({
+local CamlockKeybind = Main:CreateKeybind({
     Name = "Camlock Keybind",
     CurrentKeybind = "Q",
     HoldToInteract = false,
@@ -78,6 +77,20 @@ RunService.RenderStepped:Connect(function()
         end
     end
 end)
+
+Main:CreateSlider({
+    Name = "Field of View",
+    Range = {70, 200},
+    Increment = 1,
+    Suffix = "°",
+    CurrentValue = baseFOV,
+    Flag = "FOV_Slider",
+    Callback = function(Value)
+        baseFOV = Value
+        camera.FieldOfView = baseFOV
+    end
+})
+
 
 Rayfield:LoadConfiguration()
 
