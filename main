@@ -10,6 +10,12 @@ local camera = workspace.CurrentCamera
 local camlockEnabled = false
 local targetPartName = "HumanoidRootPart"
 
+-- ESP storage
+local Boxes = {}
+local ESPEnabled = false
+local ESPColor = Color3.fromRGB(255, 0, 0)
+local ESPSize = Vector2.new(50, 100)
+
 -- Rayfield Window
 local Window = Rayfield:CreateWindow({
     Name = "RAPER-V1",
@@ -24,6 +30,7 @@ local Window = Rayfield:CreateWindow({
 
 local Main = Window:CreateTab("Main")
 
+-- Camlock Keybind
 local CamlockKeybind = Main:CreateKeybind({
     Name = "Camlock Keybind",
     CurrentKeybind = "Q",
@@ -32,7 +39,33 @@ local CamlockKeybind = Main:CreateKeybind({
     Callback = function(Key) end
 })
 
--- Press/release handling
+-- ESP Toggle
+local ESPToggle = Main:CreateToggle({
+    Name = "ESP",
+    CurrentValue = false,
+    Flag = "ESP_Toggle",
+    Callback = function(value)
+        ESPEnabled = value
+        if not value then
+            -- Hide all boxes
+            for _, box in pairs(Boxes) do
+                box.Visible = false
+            end
+        end
+    end
+})
+
+-- ESP Color Picker
+local ESPColorPicker = Main:CreateColorPicker({
+    Name = "ESP Color",
+    Default = ESPColor,
+    Flag = "ESP_Color",
+    Callback = function(color)
+        ESPColor = color
+    end
+})
+
+-- Press/release handling for camlock
 UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe then return end
     local flag = Rayfield.Flags["Camlock_Keybind"]
@@ -51,8 +84,19 @@ UserInputService.InputEnded:Connect(function(input, gpe)
     end
 end)
 
--- Camera loop: continuously track closest player while holding
+-- Function to create a box for a player
+local function createBox(plr)
+    local box = Drawing.new("Square")
+    box.Visible = true
+    box.Color = ESPColor
+    box.Thickness = 2
+    box.Filled = false
+    return box
+end
+
+-- Main loop: camlock + ESP
 RunService.RenderStepped:Connect(function()
+    -- Camlock logic
     if camlockEnabled then
         local closest = nil
         local shortestDistance = math.huge
@@ -76,23 +120,45 @@ RunService.RenderStepped:Connect(function()
             camera.CFrame = CFrame.new(camera.CFrame.Position, part.Position)
         end
     end
+
+    -- ESP logic
+    if ESPEnabled then
+        for _, plr in pairs(Players:GetPlayers()) do
+            if plr ~= player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                local root = plr.Character.HumanoidRootPart
+                local screenPos, onScreen = camera:WorldToViewportPoint(root.Position)
+
+                -- Create box if doesn't exist
+                if not Boxes[plr] then
+                    Boxes[plr] = createBox(plr)
+                end
+
+                local box = Boxes[plr]
+                if onScreen then
+                    box.Size = ESPSize
+                    box.Position = Vector2.new(screenPos.X - ESPSize.X/2, screenPos.Y - ESPSize.Y/2)
+                    box.Color = ESPColor
+                    box.Visible = true
+                else
+                    box.Visible = false
+                end
+            elseif Boxes[plr] then
+                Boxes[plr].Visible = false
+            end
+        end
+    end
 end)
 
-Camlock:CreateSlider({
-    Name = "Field of View",
-    Range = {70, 200},        -- FOV values in degrees, not studs
-    Increment = 1,             -- Step size
-    Suffix = "°",              -- Shows ° instead of studs
-    CurrentValue = camera.FieldOfView,  -- Default current FOV
-    Flag = "FOV_Slider",
-    Callback = function(Value)
-        camera.FieldOfView = Value
+-- Cleanup when player leaves
+Players.PlayerRemoving:Connect(function(plr)
+    if Boxes[plr] then
+        Boxes[plr]:Remove()
+        Boxes[plr] = nil
     end
-})
-
-
+end)
 
 Rayfield:LoadConfiguration()
+
 
 
 
