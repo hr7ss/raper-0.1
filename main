@@ -78,18 +78,18 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
-Main:CreateSlider({
+Camlock:CreateSlider({
     Name = "Field of View",
-    Range = {70, 200},
-    Increment = 1,
-    Suffix = "°",
-    CurrentValue = baseFOV,
+    Range = {70, 200},        -- FOV values in degrees, not studs
+    Increment = 1,             -- Step size
+    Suffix = "°",              -- Shows ° instead of studs
+    CurrentValue = camera.FieldOfView,  -- Default current FOV
     Flag = "FOV_Slider",
     Callback = function(Value)
-        baseFOV = Value
-        camera.FieldOfView = baseFOV
+        camera.FieldOfView = Value
     end
 })
+
 
 
 Rayfield:LoadConfiguration()
