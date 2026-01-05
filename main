@@ -8,17 +8,17 @@ local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
--- Camlock
+-- Camlock variables
 local camlockEnabled = false
 local targetPartName = "HumanoidRootPart"
 
--- ESP
+-- ESP variables
 local ESPEnabled = false
 local ESPColor = Color3.fromRGB(255,0,0)
 local ESPSize = Vector2.new(50,100)
 local Boxes = {}
 
--- Rayfield UI
+-- Rayfield Window
 local Window = Rayfield:CreateWindow({
     Name = "RAPER-V1",
     Icon = 0,
@@ -32,7 +32,7 @@ local Window = Rayfield:CreateWindow({
 
 local Main = Window:CreateTab("Main")
 
--- Camlock keybind
+-- Camlock Keybind
 Main:CreateKeybind({
     Name = "Camlock Keybind",
     CurrentKeybind = "Q",
@@ -41,7 +41,7 @@ Main:CreateKeybind({
     Callback = function() end
 })
 
--- ESP toggle
+-- ESP Toggle
 Main:CreateToggle({
     Name = "ESP",
     CurrentValue = false,
@@ -56,7 +56,7 @@ Main:CreateToggle({
     end
 })
 
--- ESP color picker
+-- ESP Color Picker
 Main:CreateColorPicker({
     Name = "ESP Color",
     Default = ESPColor,
@@ -66,7 +66,7 @@ Main:CreateColorPicker({
     end
 })
 
--- Camlock input
+-- Camlock input handling
 UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe then return end
     local flag = Rayfield.Flags["Camlock_Keybind"]
@@ -83,7 +83,7 @@ UserInputService.InputEnded:Connect(function(input, gpe)
     end
 end)
 
--- Function to create a Drawing box
+-- Function to create a box for a player
 local function createBox(plr)
     local box = Drawing.new("Square")
     box.Visible = true
@@ -93,10 +93,31 @@ local function createBox(plr)
     return box
 end
 
--- =====================
--- Camlock Loop
--- =====================
+-- Pre-create boxes for existing players
+for _, plr in pairs(Players:GetPlayers()) do
+    if plr ~= player then
+        Boxes[plr] = createBox(plr)
+    end
+end
+
+-- Handle new players joining
+Players.PlayerAdded:Connect(function(plr)
+    if plr ~= player then
+        Boxes[plr] = createBox(plr)
+    end
+end)
+
+-- Cleanup boxes on leave
+Players.PlayerRemoving:Connect(function(plr)
+    if Boxes[plr] then
+        Boxes[plr]:Remove()
+        Boxes[plr] = nil
+    end
+end)
+
+-- Main RenderStepped loop
 RunService.RenderStepped:Connect(function()
+    -- Camlock logic
     if camlockEnabled then
         local closest = nil
         local shortestDistance = math.huge
@@ -121,34 +142,23 @@ RunService.RenderStepped:Connect(function()
             camera.CFrame = CFrame.new(camera.CFrame.Position, part.Position)
         end
     end
-end)
 
--- =====================
--- ESP Loop
--- =====================
-RunService.RenderStepped:Connect(function()
+    -- ESP logic
     if ESPEnabled then
-        for _, plr in pairs(Players:GetPlayers()) do
-            if plr ~= player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-                local root = plr.Character.HumanoidRootPart
+        for plr, box in pairs(Boxes) do
+            if plr.Character and plr.Character:FindFirstChild(targetPartName) then
+                local root = plr.Character[targetPartName]
                 local screenPos, onScreen = camera:WorldToViewportPoint(root.Position)
-
-                -- Create box if missing
-                if not Boxes[plr] then
-                    Boxes[plr] = createBox(plr)
-                end
-
-                local box = Boxes[plr]
                 if onScreen then
-                    box.Size = ESPSize
                     box.Position = Vector2.new(screenPos.X - ESPSize.X/2, screenPos.Y - ESPSize.Y/2)
-                    box.Color = ESPColor -- update color each frame
+                    box.Size = ESPSize
+                    box.Color = ESPColor
                     box.Visible = true
                 else
                     box.Visible = false
                 end
-            elseif Boxes[plr] then
-                Boxes[plr].Visible = false
+            else
+                box.Visible = false
             end
         end
     else
@@ -158,14 +168,4 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Cleanup boxes on leave
-Players.PlayerRemoving:Connect(function(plr)
-    if Boxes[plr] then
-        Boxes[plr]:Remove()
-        Boxes[plr] = nil
-    end
-end)
-
--- Load Rayfield configuration
 Rayfield:LoadConfiguration()
-
