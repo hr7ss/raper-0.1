@@ -1,20 +1,22 @@
+-- Load Rayfield
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
+-- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
+-- Camlock variables
 local camlockEnabled = false
 local targetPartName = "HumanoidRootPart"
 
--- ESP storage
-local Boxes = {}
+-- ESP variables
 local ESPEnabled = false
 local ESPColor = Color3.fromRGB(255, 0, 0)
-local ESPSize = Vector2.new(50, 100)
+local Boxes = {} -- table storing Drawing boxes
+local ESPSize = Vector2.new(50, 100) -- width x height
 
 -- Rayfield Window
 local Window = Rayfield:CreateWindow({
@@ -31,7 +33,7 @@ local Window = Rayfield:CreateWindow({
 local Main = Window:CreateTab("Main")
 
 -- Camlock Keybind
-local CamlockKeybind = Main:CreateKeybind({
+Main:CreateKeybind({
     Name = "Camlock Keybind",
     CurrentKeybind = "Q",
     HoldToInteract = false,
@@ -39,15 +41,14 @@ local CamlockKeybind = Main:CreateKeybind({
     Callback = function(Key) end
 })
 
--- ESP Toggle
-local ESPToggle = Main:CreateToggle({
+-- ESP toggle
+Main:CreateToggle({
     Name = "ESP",
     CurrentValue = false,
     Flag = "ESP_Toggle",
     Callback = function(value)
         ESPEnabled = value
         if not value then
-            -- Hide all boxes
             for _, box in pairs(Boxes) do
                 box.Visible = false
             end
@@ -56,7 +57,7 @@ local ESPToggle = Main:CreateToggle({
 })
 
 -- ESP Color Picker
-local ESPColorPicker = Main:CreateColorPicker({
+Main:CreateColorPicker({
     Name = "ESP Color",
     Default = ESPColor,
     Flag = "ESP_Color",
@@ -84,17 +85,17 @@ UserInputService.InputEnded:Connect(function(input, gpe)
     end
 end)
 
--- Function to create a box for a player
+-- Function to create a Drawing box
 local function createBox(plr)
     local box = Drawing.new("Square")
     box.Visible = true
-    box.Color = ESPColor
     box.Thickness = 2
     box.Filled = false
+    box.Color = ESPColor
     return box
 end
 
--- Main loop: camlock + ESP
+-- Main loop: Camlock + ESP
 RunService.RenderStepped:Connect(function()
     -- Camlock logic
     if camlockEnabled then
@@ -124,8 +125,8 @@ RunService.RenderStepped:Connect(function()
     -- ESP logic
     if ESPEnabled then
         for _, plr in pairs(Players:GetPlayers()) do
-            if plr ~= player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-                local root = plr.Character.HumanoidRootPart
+            if plr ~= player and plr.Character and plr.Character:FindFirstChild(targetPartName) then
+                local root = plr.Character[targetPartName]
                 local screenPos, onScreen = camera:WorldToViewportPoint(root.Position)
 
                 -- Create box if doesn't exist
@@ -146,10 +147,14 @@ RunService.RenderStepped:Connect(function()
                 Boxes[plr].Visible = false
             end
         end
+    else
+        for _, box in pairs(Boxes) do
+            box.Visible = false
+        end
     end
 end)
 
--- Cleanup when player leaves
+-- Cleanup boxes when player leaves
 Players.PlayerRemoving:Connect(function(plr)
     if Boxes[plr] then
         Boxes[plr]:Remove()
@@ -157,9 +162,5 @@ Players.PlayerRemoving:Connect(function(plr)
     end
 end)
 
+-- Load Rayfield configuration
 Rayfield:LoadConfiguration()
-
-
-
-
-
