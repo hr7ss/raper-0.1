@@ -38,18 +38,55 @@ local function getClosestPlayer()
     return closest
 end
 
+-- Rayfield Window
+local Window = Rayfield:CreateWindow({
+    Name = "RAPER-V1",
+    Icon = 0,
+    LoadingTitle = "RAPER-V1",
+    LoadingSubtitle = "by hr7ss",
+    ShowText = "Welcome",
+    Theme = "Default",
+    ToggleUIKeybind = "K",
+    DisableRayfieldPrompts = false,
+    DisableBuildWarnings = false,
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = "RAPER_V1",
+        FileName = "Cfg1"
+    },
+})
+
+local Camlock = Window:CreateTab("Camlock")
+
+-- Create the Hold Keybind
+local CamlockKeybind = Camlock:CreateKeybind({
+    Name = "Camlock Keybind",
+    CurrentKeybind = "Q",
+    HoldToInteract = true,
+    Flag = "Camlock_Keybind",
+    Callback = function(Key)
+        camlockEnabled = true
+        target = getClosestPlayer()
+    end
+})
+
+-- InputEnded listener for RELEASE (turn camlock off)
 UserInputService.InputEnded:Connect(function(input, gpe)
     if gpe then return end
 
-    -- Get the saved keybind from Rayfield
-    local bind = Rayfield.Flags["Camlock_Keybind"].CurrentKeybind
-    if input.KeyCode.Name == bind then
-        camlockEnabled = false
-        target = nil
+    local keybindFlag = Rayfield.Flags["Camlock_Keybind"]
+    if keybindFlag then
+        local savedKey = keybindFlag.CurrentKeybind
+
+        -- Convert string (like "Q") to Enum.KeyCode
+        if input.KeyCode == Enum.KeyCode[savedKey] then
+            camlockEnabled = false
+            target = nil
+        end
     end
 end)
 
-
+-- Camera loop
 RunService.RenderStepped:Connect(function()
     if camlockEnabled and target and target.Character and target.Character:FindFirstChild(targetPartName) then
         local part = target.Character[targetPartName]
@@ -57,42 +94,6 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
-
-local Window = Rayfield:CreateWindow({
-   Name = "RAPER-V1",
-   Icon = 0, -- Icon in Topbar. Can use Lucide Icons (string) or Roblox Image (number). 0 to use no icon (default).
-   LoadingTitle = "RAPER-V1",
-   LoadingSubtitle = "by hr7ss",
-   ShowText = "Welcome", -- for mobile users to unhide rayfield, change if you'd like
-   Theme = "Default", -- Check https://docs.sirius.menu/rayfield/configuration/themes
-
-   ToggleUIKeybind = "K", -- The keybind to toggle the UI visibility (string like "K" or Enum.KeyCode)
-
-   DisableRayfieldPrompts = false,
-   DisableBuildWarnings = false, -- Prevents Rayfield from warning when the script has a version mismatch with the interface
-
-   ConfigurationSaving = {
-      Enabled = true,
-      FolderName = nil, -- Create a custom folder for your hub/game
-      FileName = "Cfg1"
-   },
-
-})
-
-local Camlock = Window:CreateTab("Camlock")
-
-local CamlockKeybind = Camlock:CreateKeybind({
-    Name = "Camlock Keybind",
-    CurrentKeybind = "Q",
-    HoldToInteract = true,
-    Flag = "Camlock_Keybind",
-    Callback = function(Key)
-        -- This fires when the key is PRESSED
-        camlockEnabled = true
-        target = getClosestPlayer()
-    end
-})
-
-
-
+-- Load saved config at the end
 Rayfield:LoadConfiguration()
+
