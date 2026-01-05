@@ -8,17 +8,17 @@ local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
--- Camlock variables
+-- Camlock
 local camlockEnabled = false
 local targetPartName = "HumanoidRootPart"
 
--- ESP variables
+-- ESP
 local ESPEnabled = false
-local ESPColor = Color3.fromRGB(255, 0, 0)
-local Boxes = {} -- table storing Drawing boxes
-local ESPSize = Vector2.new(50, 100) -- width x height
+local ESPColor = Color3.fromRGB(255,0,0)
+local ESPSize = Vector2.new(50,100)
+local Boxes = {}
 
--- Rayfield Window
+-- Rayfield UI
 local Window = Rayfield:CreateWindow({
     Name = "RAPER-V1",
     Icon = 0,
@@ -32,13 +32,13 @@ local Window = Rayfield:CreateWindow({
 
 local Main = Window:CreateTab("Main")
 
--- Camlock Keybind
+-- Camlock keybind
 Main:CreateKeybind({
     Name = "Camlock Keybind",
     CurrentKeybind = "Q",
     HoldToInteract = false,
     Flag = "Camlock_Keybind",
-    Callback = function(Key) end
+    Callback = function() end
 })
 
 -- ESP toggle
@@ -48,7 +48,6 @@ Main:CreateToggle({
     Flag = "ESP_Toggle",
     Callback = function(value)
         ESPEnabled = value
-        -- Hide all boxes if ESP is off
         if not value then
             for _, box in pairs(Boxes) do
                 box.Visible = false
@@ -57,7 +56,7 @@ Main:CreateToggle({
     end
 })
 
--- ESP Color Picker
+-- ESP color picker
 Main:CreateColorPicker({
     Name = "ESP Color",
     Default = ESPColor,
@@ -67,12 +66,11 @@ Main:CreateColorPicker({
     end
 })
 
--- Press/release handling for camlock
+-- Camlock input
 UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe then return end
     local flag = Rayfield.Flags["Camlock_Keybind"]
-    if not flag then return end
-    if input.KeyCode == Enum.KeyCode[flag.CurrentKeybind] then
+    if flag and input.KeyCode == Enum.KeyCode[flag.CurrentKeybind] then
         camlockEnabled = true
     end
 end)
@@ -80,8 +78,7 @@ end)
 UserInputService.InputEnded:Connect(function(input, gpe)
     if gpe then return end
     local flag = Rayfield.Flags["Camlock_Keybind"]
-    if not flag then return end
-    if input.KeyCode == Enum.KeyCode[flag.CurrentKeybind] then
+    if flag and input.KeyCode == Enum.KeyCode[flag.CurrentKeybind] then
         camlockEnabled = false
     end
 end)
@@ -96,13 +93,15 @@ local function createBox(plr)
     return box
 end
 
--- Main loop: Camlock + ESP
+-- =====================
+-- Camlock Loop
+-- =====================
 RunService.RenderStepped:Connect(function()
-    -- Camlock logic
     if camlockEnabled then
         local closest = nil
         local shortestDistance = math.huge
         local mousePos = UserInputService:GetMouseLocation()
+
         for _, plr in pairs(Players:GetPlayers()) do
             if plr ~= player and plr.Character and plr.Character:FindFirstChild(targetPartName) then
                 local part = plr.Character[targetPartName]
@@ -122,15 +121,19 @@ RunService.RenderStepped:Connect(function()
             camera.CFrame = CFrame.new(camera.CFrame.Position, part.Position)
         end
     end
+end)
 
-    -- ESP logic
+-- =====================
+-- ESP Loop
+-- =====================
+RunService.RenderStepped:Connect(function()
     if ESPEnabled then
         for _, plr in pairs(Players:GetPlayers()) do
-            if plr ~= player and plr.Character and plr.Character:FindFirstChild(targetPartName) then
-                local root = plr.Character[targetPartName]
+            if plr ~= player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                local root = plr.Character.HumanoidRootPart
                 local screenPos, onScreen = camera:WorldToViewportPoint(root.Position)
 
-                -- Create box if doesn't exist
+                -- Create box if missing
                 if not Boxes[plr] then
                     Boxes[plr] = createBox(plr)
                 end
@@ -139,7 +142,7 @@ RunService.RenderStepped:Connect(function()
                 if onScreen then
                     box.Size = ESPSize
                     box.Position = Vector2.new(screenPos.X - ESPSize.X/2, screenPos.Y - ESPSize.Y/2)
-                    box.Color = ESPColor -- update color every frame
+                    box.Color = ESPColor -- update color each frame
                     box.Visible = true
                 else
                     box.Visible = false
@@ -155,7 +158,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Cleanup boxes when player leaves
+-- Cleanup boxes on leave
 Players.PlayerRemoving:Connect(function(plr)
     if Boxes[plr] then
         Boxes[plr]:Remove()
@@ -163,4 +166,6 @@ Players.PlayerRemoving:Connect(function(plr)
     end
 end)
 
+-- Load Rayfield configuration
 Rayfield:LoadConfiguration()
+
