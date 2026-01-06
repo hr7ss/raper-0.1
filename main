@@ -1,171 +1,102 @@
--- Load Rayfield
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
--- Services
+local Window = Rayfield:CreateWindow({
+    Name = "Player Lock-On",
+    LoadingTitle = "Lock-On Script",
+    LoadingSubtitle = "for your game",
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = "MyGameLockOn",
+        FileName = "Config"
+    }
+})
+
+local Tab = Window:CreateTab("Combat", 4483362458) -- Tab title and icon
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local player = Players.LocalPlayer
-local camera = workspace.CurrentCamera
+local Camera = workspace.CurrentCamera
 
--- Camlock variables
-local camlockEnabled = false
-local targetPartName = "HumanoidRootPart"
+local LocalPlayer = Players.LocalPlayer
 
--- ESP variables
-local ESPEnabled = false
-local ESPColor = Color3.fromRGB(255,0,0)
-local ESPSize = Vector2.new(50,100)
-local Boxes = {}
+local LockEnabled = false
+local HoldingKey = false
+local Connection
 
--- Rayfield Window
-local Window = Rayfield:CreateWindow({
-    Name = "RAPER-V1",
-    Icon = 0,
-    LoadingTitle = "RAPER-V1",
-    LoadingSubtitle = "by hr7ss",
-    ShowText = "Welcome",
-    Theme = "Default",
-    ToggleUIKeybind = "K",
-    ConfigurationSaving = { Enabled = true, FolderName = "RAPER_V1", FileName = "Cfg1" }
-})
+-- Simple function to find the closest player (you can add team check, alive check, etc.)
+local function GetClosestPlayer()
+    local closestPlayer = nil
+    local closestDistance = math.huge
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+            local head = player.Character.Head
+            local distance = (head.Position - Camera.CFrame.Position).Magnitude
+            if distance < closestDistance then
+                closestDistance = distance
+                closestPlayer = player
+            end
+        end
+    end
+    
+    return closestPlayer
+end
 
-local Main = Window:CreateTab("Main")
+-- The lock-on loop
+local function StartLockOn()
+    if Connection then return end
+    
+    Connection = RunService.RenderStepped:Connect(function()
+        if HoldingKey and LockEnabled then
+            local targetPlayer = GetClosestPlayer()
+            if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Head") then
+                local targetPos = targetPlayer.Character.Head.Position
+                Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetPos)
+            end
+        end
+    end)
+end
 
--- Camlock Keybind
-Main:CreateKeybind({
-    Name = "Camlock Keybind",
-    CurrentKeybind = "Q",
-    HoldToInteract = false,
-    Flag = "Camlock_Keybind",
-    Callback = function() end
-})
+local function StopLockOn()
+    if Connection then
+        Connection:Disconnect()
+        Connection = nil
+    end
+end
 
--- ESP Toggle
-Main:CreateToggle({
-    Name = "ESP",
+-- Rayfield Toggle to enable/disable the feature
+Tab:CreateToggle({
+    Name = "Enable Player Lock-On",
     CurrentValue = false,
-    Flag = "ESP_Toggle",
-    Callback = function(value)
-        ESPEnabled = value
-        if not value then
-            for _, box in pairs(Boxes) do
-                box.Visible = false
-            end
+    Callback = function(Value)
+        LockEnabled = Value
+        if not Value then
+            StopLockOn()
+            HoldingKey = false
         end
     end
 })
 
--- ESP Color Picker
-Main:CreateColorPicker({
-    Name = "ESP Color",
-    Default = ESPColor,
-    Flag = "ESP_Color",
-    Callback = function(color)
-        ESPColor = color
+-- Rayfield Keybind (this is the button you HOLD)
+Tab:CreateKeybind({
+    Name = "Hold to Lock On",
+    CurrentKeybind = "Q", -- Change this to whatever key you prefer
+    HoldToActivate = true, -- IMPORTANT: This makes it activate only while holding
+    Callback = function(Keybind)
+        HoldingKey = true
+        if LockEnabled then
+            StartLockOn()
+        end
+    end,
+    ReleasedCallback = function(Keybind) -- This fires when you release the key
+        HoldingKey = false
+        -- No need to stop connection here since it checks HoldingKey every frame
     end
 })
 
--- Camlock input handling
-UserInputService.InputBegan:Connect(function(input, gpe)
-    if gpe then return end
-    local flag = Rayfield.Flags["Camlock_Keybind"]
-    if flag and input.KeyCode == Enum.KeyCode[flag.CurrentKeybind] then
-        camlockEnabled = true
-    end
-end)
-
-UserInputService.InputEnded:Connect(function(input, gpe)
-    if gpe then return end
-    local flag = Rayfield.Flags["Camlock_Keybind"]
-    if flag and input.KeyCode == Enum.KeyCode[flag.CurrentKeybind] then
-        camlockEnabled = false
-    end
-end)
-
--- Function to create a box for a player
-local function createBox(plr)
-    local box = Drawing.new("Square")
-    box.Visible = true
-    box.Thickness = 2
-    box.Filled = false
-    box.Color = ESPColor
-    return box
-end
-
--- Pre-create boxes for existing players
-for _, plr in pairs(Players:GetPlayers()) do
-    if plr ~= player then
-        Boxes[plr] = createBox(plr)
-    end
-end
-
--- Handle new players joining
-Players.PlayerAdded:Connect(function(plr)
-    if plr ~= player then
-        Boxes[plr] = createBox(plr)
-    end
-end)
-
--- Cleanup boxes on leave
-Players.PlayerRemoving:Connect(function(plr)
-    if Boxes[plr] then
-        Boxes[plr]:Remove()
-        Boxes[plr] = nil
-    end
-end)
-
--- Main RenderStepped loop
-RunService.RenderStepped:Connect(function()
-    -- Camlock logic
-    if camlockEnabled then
-        local closest = nil
-        local shortestDistance = math.huge
-        local mousePos = UserInputService:GetMouseLocation()
-
-        for _, plr in pairs(Players:GetPlayers()) do
-            if plr ~= player and plr.Character and plr.Character:FindFirstChild(targetPartName) then
-                local part = plr.Character[targetPartName]
-                local screenPos, onScreen = camera:WorldToViewportPoint(part.Position)
-                if onScreen then
-                    local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
-                    if distance < shortestDistance then
-                        shortestDistance = distance
-                        closest = plr
-                    end
-                end
-            end
-        end
-
-        if closest and closest.Character and closest.Character:FindFirstChild(targetPartName) then
-            local part = closest.Character[targetPartName]
-            camera.CFrame = CFrame.new(camera.CFrame.Position, part.Position)
-        end
-    end
-
-    -- ESP logic
-    if ESPEnabled then
-        for plr, box in pairs(Boxes) do
-            if plr.Character and plr.Character:FindFirstChild(targetPartName) then
-                local root = plr.Character[targetPartName]
-                local screenPos, onScreen = camera:WorldToViewportPoint(root.Position)
-                if onScreen then
-                    box.Position = Vector2.new(screenPos.X - ESPSize.X/2, screenPos.Y - ESPSize.Y/2)
-                    box.Size = ESPSize
-                    box.Color = ESPColor
-                    box.Visible = true
-                else
-                    box.Visible = false
-                end
-            else
-                box.Visible = false
-            end
-        end
-    else
-        for _, box in pairs(Boxes) do
-            box.Visible = false
-        end
-    end
-end)
-
-Rayfield:LoadConfiguration()
+Rayfield:Notify({
+    Title = "Lock-On Loaded",
+    Content = "Toggle the feature on, then hold the keybind to lock the camera onto the closest player.",
+    Duration = 8
+})
